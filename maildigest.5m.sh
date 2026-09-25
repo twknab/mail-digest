@@ -34,17 +34,14 @@ menu_actions() {
   echo "---"
   # The About content lives here as a submenu rather than only behind a click,
   # so the entry is never an empty menu.
-  echo "About Mail Digest"
-  echo "--Mail Digest | size=13"
-  echo "--Three weekday digests of the mail that actually needs you. | size=11 color=$GREY"
-  echo "-----"
-  echo "--Runs entirely on this Mac | size=11 color=$GREY"
-  echo "--Nothing uploaded, no password in a file | size=11 color=$GREY"
-  echo "--Read-only: a run never marks mail as read | size=11 color=$GREY"
-  echo "--Replies are drafted, never sent | size=11 color=$GREY"
-  echo "-----"
-  echo "--Open the About page | shell=/bin/sh param1=-c param2=\"$PY3 $DIR/viewer.py --about\" terminal=false"
-  echo "--timknab.dev | href=https://timknab.dev color=$BLUE"
+  # Flat lines, no submenu: "--" is SwiftBar's submenu prefix and getting that
+  # structure subtly wrong renders an empty menu with no error anywhere.
+  echo "Mail Digest | size=13"
+  echo "Three weekday digests of the mail that needs you | color=$GREY size=11"
+  echo "Read-only — a run never marks mail as read | color=$GREY size=11"
+  echo "Replies are drafted, never sent | color=$GREY size=11"
+  echo "Open the About page | shell=/bin/sh param1=-c param2=\"$PY3 $DIR/viewer.py --about\" terminal=false"
+  echo "timknab.dev | href=https://timknab.dev color=$BLUE"
 }
 
 latest="$(ls -t "$OUT"/*.md 2>/dev/null | head -1)"
@@ -134,7 +131,7 @@ if [ "$open_n" -gt 0 ]; then
     short="$subject"
     [ ${#short} -gt 54 ] && short="$(printf '%.51s...' "$short")"
     echo "• $short | shell=/bin/sh param1=-c param2=\"$PY3 $DIR/triage.py --done $id\" terminal=false refresh=true"
-    echo "-- $inbox | color=$GREY size=11"
+    echo "   $inbox | color=$GREY size=11"
   done
 fi
 
