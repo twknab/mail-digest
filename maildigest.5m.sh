@@ -79,7 +79,9 @@ fi
 
 stem="$(basename "$latest" .md)"
 count="$(grep -oE '^ACTION_ITEMS:[[:space:]]*[0-9]+' "$latest" | grep -oE '[0-9]+' | tail -1)"
-when="$(echo "$stem" | sed -E 's/^[0-9]{4}-([0-9]{2})-([0-9]{2})-([0-9]{2})([0-9]{2})$/\1\/\2 \3:\4/')"
+# Sweep files carry a prefix; strip it so the label stays a readable time.
+when="$(echo "$stem" | sed -E 's/^sweep-//; s/^[0-9]{4}-([0-9]{2})-([0-9]{2})-([0-9]{2})([0-9]{2})$/\1\/\2 \3:\4/')"
+case "$stem" in sweep-*) when="$when (sweep)";; esac
 
 # What is still open is the list, not the last run. An item raised this morning
 # is still open this evening even though the newest digest is empty.

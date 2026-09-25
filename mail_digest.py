@@ -741,8 +741,14 @@ def main() -> int:
             die("unknown_account", f"No account matching {sorted(wanted)} in {args.config}.")
 
     contacts = load_contacts()
-    result = run_junk_report(accounts, args, contacts) if args.junk_report \
-        else run_digest(accounts, args, contacts)
+    try:
+        result = run_junk_report(accounts, args, contacts) if args.junk_report \
+            else run_digest(accounts, args, contacts)
+    finally:
+        # Clear the bar whichever way we leave. run-digest.sh clears it too,
+        # but this module is also run directly -- by sweep.sh, and by hand --
+        # and a stale bar would sit in the menu bar claiming a run is live.
+        clear_progress()
     print(json.dumps(result, indent=2, default=str))
     return 0
 
