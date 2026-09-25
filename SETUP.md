@@ -205,7 +205,7 @@ for t in test_mail_digest test_junk_actions test_mail_reply test_setup_server; d
 done
 ```
 
-135 checks covering unsubscribe parsing, bulk detection, sender classification,
+141 checks covering unsubscribe parsing, bulk detection, sender classification,
 role and alias routing, reply threading and From-alias selection, the setup
 server's token gate and validation, and the safety refusals. No network or
 mailbox needed.

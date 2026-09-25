@@ -264,6 +264,30 @@ check("account_addresses includes the login itself",
       "me@example.com" in md.account_addresses(ALIASED), True)
 
 
+print("select_uids -- a capped batch must not skip mail")
+check("under the cap returns everything", md.select_uids([1, 2, 3], 60), ([1, 2, 3], 0))
+check("exactly at the cap", md.select_uids([1, 2, 3], 3), ([1, 2, 3], 0))
+check("over the cap takes the OLDEST, so nothing is skipped",
+      md.select_uids([1, 2, 3, 4, 5], 2), ([1, 2], 3))
+check("the saved position cannot jump past unread mail",
+      max(md.select_uids([10, 20, 30, 40], 2)[0]), 20)
+check("empty input", md.select_uids([], 60), ([], 0))
+check("a cap of zero is treated as no cap rather than reading nothing",
+      md.select_uids([1, 2], 0), ([1, 2], 0))
+
+
 print()
 print(f"{PASSED} passed, {FAILED} failed")
 raise SystemExit(1 if FAILED else 0)
+
+print("select_uids -- a capped batch must not skip mail")
+check("under the cap returns everything", md.select_uids([1, 2, 3], 60), ([1, 2, 3], 0))
+check("exactly at the cap", md.select_uids([1, 2, 3], 3), ([1, 2, 3], 0))
+check("over the cap takes the OLDEST, so nothing is skipped",
+      md.select_uids([1, 2, 3, 4, 5], 2), ([1, 2], 3))
+check("the saved position cannot jump past unread mail",
+      max(md.select_uids([10, 20, 30, 40], 2)[0]), 20)
+check("empty input", md.select_uids([], 60), ([], 0))
+check("a cap of zero is treated as no cap rather than reading nothing",
+      md.select_uids([1, 2], 0), ([1, 2], 0))
+

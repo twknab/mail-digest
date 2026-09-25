@@ -285,6 +285,19 @@ def search_uids(conn, last_uid: int | None, since_hours: int) -> list[int]:
     return [u for u in uids if not last_uid or u > last_uid]
 
 
+def select_uids(uids: list[int], cap: int) -> tuple[list[int], int]:
+    """Take a capped batch, OLDEST first, and say how many are left over.
+
+    Taking the newest instead would be a silent data loss: the saved position
+    advances to the highest UID read, so anything older that got dropped is
+    never offered again. Working from the oldest end means a backlog drains
+    over successive runs rather than falling on the floor.
+    """
+    if cap <= 0 or len(uids) <= cap:
+        return uids, 0
+    return uids[:cap], len(uids) - cap
+
+
 def fetch_full(conn, uid: int, gmail: bool) -> dict | None:
     spec = "(FLAGS X-GM-LABELS BODY.PEEK[])" if gmail else "(FLAGS BODY.PEEK[])"
     typ, data = conn.uid("FETCH", str(uid), spec)
@@ -450,10 +463,8 @@ def run_digest(accounts: list[dict], args, contacts: set[str]) -> dict:
                 summaries.append({**summary, "error": "select_failed", "detail": mailbox})
                 continue
 
-            uids = search_uids(conn, last_uid, args.since_hours)
-            truncated = len(uids) > args.max
-            if truncated:
-                uids = uids[-args.max:]
+            uids, remaining = select_uids(search_uids(conn, last_uid, args.since_hours), args.max)
+            truncated = remaining > 0
 
             dropped = 0
             for uid in uids:
@@ -483,7 +494,8 @@ def run_digest(accounts: list[dict], args, contacts: set[str]) -> dict:
                 state[key]["last_run"] = datetime.now(timezone.utc).isoformat()
 
             summaries.append({**summary, "new_count": len(uids),
-                              "bulk_dropped": dropped, "truncated": truncated})
+                              "bulk_dropped": dropped, "truncated": truncated,
+                              "remaining": remaining})
         finally:
             close_quietly(conn)
 
