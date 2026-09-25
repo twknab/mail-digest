@@ -271,6 +271,8 @@ confirms your address is live, so we filter instead.
 | `providers.json` | Provider presets. Add one here, not in code. |
 | `mail_digest.py` | The reader. Read-only, all accounts, JSON out. |
 | `check_readonly.py` | Proves a run changes no unread count. |
+| `triage.py` | Open action items that outlive individual digests. |
+| `sweep.sh` | Walks the backlog the forward baseline skipped. |
 | `mail_reply.py` | Drafts a reply into Drafts. Dry run unless `--append`. Cannot send. |
 | `SPEC-replies.md` | Why drafting works the way it does. |
 | `junk_actions.py` | Unsubscribe executor. Dry run unless `--execute`. |
@@ -286,12 +288,12 @@ confirms your address is live, so we filter instead.
 ## Tests
 
 ```bash
-for t in test_mail_digest test_junk_actions test_mail_reply test_setup_server; do
+for t in test_mail_digest test_junk_actions test_mail_reply test_setup_server test_triage; do
   python3 $t.py || break
 done
 ```
 
-141 checks covering unsubscribe parsing, bulk detection, sender classification,
+164 checks covering unsubscribe parsing, bulk detection, sender classification,
 role and alias routing, reply threading and From-alias selection, the setup
 server's token gate and validation, and the safety refusals. No network or
 mailbox needed.

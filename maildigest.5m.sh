@@ -31,6 +31,8 @@ menu_actions() {
   echo "View latest digest | bash=$PY3 param1=$DIR/viewer.py terminal=false"
   echo "All digests | bash=$PY3 param1=$DIR/viewer.py param2=--list terminal=false"
   echo "Run now | bash=/bin/launchctl param1=kickstart param2=-k param3=gui/$(id -u)/local.mail-digest terminal=false refresh=true"
+  echo "---"
+  echo "About Mail Digest | bash=$PY3 param1=$DIR/viewer.py param2=--about terminal=false"
 }
 
 latest="$(ls -t "$OUT"/*.md 2>/dev/null | head -1)"
@@ -77,18 +79,22 @@ fi
 
 stem="$(basename "$latest" .md)"
 count="$(grep -oE '^ACTION_ITEMS:[[:space:]]*[0-9]+' "$latest" | grep -oE '[0-9]+' | tail -1)"
-acked="$(cat "$STATE/acknowledged" 2>/dev/null || true)"
 when="$(echo "$stem" | sed -E 's/^[0-9]{4}-([0-9]{2})-([0-9]{2})-([0-9]{2})([0-9]{2})$/\1\/\2 \3:\4/')"
 
+# What is still open is the list, not the last run. An item raised this morning
+# is still open this evening even though the newest digest is empty.
+open_tsv="$("$PY3" "$DIR/triage.py" --tsv 2>/dev/null)"
+open_n=0
+[ -n "$open_tsv" ] && open_n=$(printf '%s\n' "$open_tsv" | wc -l | tr -d ' ')
+
 # A digest still being written has no marker yet, and an absent marker is not
-# zero -- the same distinction run-digest.sh makes. Stay quiet about a file
-# younger than 90s rather than crying wolf mid-run.
+# zero -- the same distinction run-digest.sh makes. A negative age means a
+# future mtime (clock skew): treat it as old, so a genuinely broken digest is
+# never masked as "in progress".
 age=$(( $(date +%s) - $(stat -f %m "$latest") ))
 
-# A negative age means a future mtime (clock skew): treat it as old, so a
-# genuinely broken digest is never masked as "in progress".
 if [ -z "$count" ] && [ "$age" -ge 0 ] && [ "$age" -lt 90 ]; then
-  echo "● | color=$GREY size=11"
+  echo "○ | color=$BLUE size=11"
   echo "---"
   echo "Digest in progress… | color=$GREY"
 elif [ -z "$count" ]; then
@@ -96,37 +102,26 @@ elif [ -z "$count" ]; then
   echo "---"
   echo "Last digest reported no item count | color=$ORANGE"
   echo "Open it and check | color=$GREY size=12"
-elif [ "$count" -gt 0 ] && [ "$acked" != "$stem" ]; then
-  echo "● $count | color=$ORANGE size=11"
+elif [ "$open_n" -gt 0 ]; then
+  echo "● $open_n | color=$ORANGE size=11"
   echo "---"
-  echo "$count need you · $when | color=$GREY"
+  echo "$open_n open · last run $when | color=$GREY"
 else
   echo "● | color=$GREEN size=11"
   echo "---"
-  if [ "$count" -gt 0 ]; then
-    echo "All caught up · $count seen · $when | color=$GREY"
-  else
-    echo "All caught up · $when | color=$GREY"
-  fi
+  echo "All caught up · $when | color=$GREY"
 fi
 
-# Items, only while there is something outstanding.
-if [ -n "$count" ] && [ "$count" -gt 0 ] && [ "$acked" != "$stem" ]; then
+if [ "$open_n" -gt 0 ]; then
   echo "---"
-  awk '
-    /^### / { sub(/^### /, ""); print "▾ " $0 " | color=#8a8782 size=12"; bucket=""; next }
-    /^\*\*Needs action\*\*/ { bucket="act"; next }
-    /^\*\*Worth knowing\*\*/ { bucket="fyi"; next }
-    /\*\*Subject:\*\*/ {
-        sub(/^.*\*\*Subject:\*\*[[:space:]]*/, "");
-        if (length($0) > 58) $0 = substr($0, 1, 55) "...";
-        if (bucket == "fyi") print "   " $0 " | size=11 color=#8a8782";
-        else print "   • " $0 " | size=12";
-        next
-    }
-  ' "$latest"
-  echo "---"
-  echo "Mark all caught up | bash=$DIR/ack.sh terminal=false refresh=true"
+  echo "Click an item to mark it done | color=$GREY size=11"
+  printf '%s\n' "$open_tsv" | while IFS="$(printf '\t')" read -r id inbox subject; do
+    [ -n "$id" ] || continue
+    short="$subject"
+    [ ${#short} -gt 54 ] && short="$(printf '%.51s...' "$short")"
+    echo "• $short | bash=$PY3 param1=$DIR/triage.py param2=--done param3=$id terminal=false refresh=true"
+    echo "-- $inbox | color=$GREY size=11"
+  done
 fi
 
 menu_actions

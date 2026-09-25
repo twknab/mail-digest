@@ -69,6 +69,14 @@ border-bottom:1px solid var(--line);text-decoration:none;color:var(--fg)}
 .rule{height:1px;background:var(--line);margin:28px 0 20px;border:0}
 footer{margin-top:32px;text-align:center;color:var(--muted);font-size:12.5px}
 a{color:var(--accent)}
+:root{--icon-bg:#eceae5;--icon-fg:#3c3a36;--icon-accent:#c2703d}
+@media (prefers-color-scheme:dark){:root{--icon-bg:#23272b;--icon-fg:#d9d6d1;--icon-accent:#e09055}}
+.about{text-align:center;padding:54px 0 24px}
+.abouttitle{font-size:26px;font-weight:600;letter-spacing:-.02em;margin:18px 0 6px}
+.tagline{color:var(--muted);margin:0 0 30px}
+.facts{text-align:left;max-width:460px;margin:0 auto;border-top:1px solid var(--line);padding-top:22px}
+.facts p{font-size:14.5px;color:var(--muted);margin:0 0 14px}
+.by{margin-top:34px;color:var(--muted);font-size:13px}
 """
 
 
@@ -184,6 +192,40 @@ def render_digest(path: Path) -> str:
 <footer><a href='index.html'>All digests</a></footer>""")
 
 
+
+# A digest is mail distilled: the envelope is the source, the three bars
+# beneath it are what is left after triage -- fewer, shorter, ranked.
+ICON = """<svg viewBox='0 0 64 64' width='72' height='72' role='img' aria-label='Mail Digest'>
+  <rect x='2' y='2' width='60' height='60' rx='15' fill='var(--icon-bg)'/>
+  <path d='M14 17h36a3 3 0 0 1 3 3v13a3 3 0 0 1-3 3H14a3 3 0 0 1-3-3V20a3 3 0 0 1 3-3z'
+        fill='none' stroke='var(--icon-fg)' stroke-width='3' stroke-linejoin='round'/>
+  <path d='M11.5 20.5 32 32l20.5-11.5' fill='none' stroke='var(--icon-fg)'
+        stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/>
+  <rect x='16' y='43' width='32' height='3.4' rx='1.7' fill='var(--icon-accent)'/>
+  <rect x='20' y='49' width='24' height='3.4' rx='1.7' fill='var(--icon-accent)' opacity='.7'/>
+  <rect x='25' y='55' width='14' height='3.4' rx='1.7' fill='var(--icon-accent)' opacity='.45'/>
+</svg>"""
+
+
+def render_about() -> str:
+    return page("About Mail Digest", f"""
+<div class='about'>
+  {ICON}
+  <h2 class='abouttitle'>Mail Digest</h2>
+  <p class='tagline'>Three weekday digests of the mail that actually needs you.</p>
+  <div class='facts'>
+    <p>Runs entirely on this Mac. Nothing is uploaded and no password is written
+       to a file.</p>
+    <p>The reader is read-only by construction: mailboxes open
+       <code>readonly=True</code> and every fetch uses <code>BODY.PEEK</code>,
+       so a run never marks anything as read.</p>
+    <p>Replies are drafted into your Drafts folder and never sent \u2014 the
+       drafting module holds no SMTP capability at all.</p>
+  </div>
+  <p class='by'>Built by <a href='https://timknab.dev'>timknab.dev</a></p>
+</div>""")
+
+
 def render_index(files: list[Path]) -> str:
     rows = []
     for f in files:
@@ -208,10 +250,19 @@ def main() -> int:
     p = argparse.ArgumentParser(description="Render a digest as HTML and open it.")
     p.add_argument("file", nargs="?", type=Path)
     p.add_argument("--list", action="store_true", help="render the index of all digests")
+    p.add_argument("--about", action="store_true", help="render the about page")
     p.add_argument("--no-open", action="store_true")
     args = p.parse_args()
 
     VIEW_DIR.mkdir(parents=True, exist_ok=True)
+    if args.about:
+        target = VIEW_DIR / "about.html"
+        target.write_text(render_about())
+        print(target)
+        if not args.no_open:
+            webbrowser.open(target.as_uri())
+        return 0
+
     files = sorted(DIGESTS.glob("*.md"), reverse=True)
     if not files:
         print("No digests yet.")

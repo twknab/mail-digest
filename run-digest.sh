@@ -127,4 +127,10 @@ if [ "$COUNT" -gt 0 ]; then
   notify "$COUNT $PLURAL need you" "$(date '+%H:%M')"
 fi
 
+# Feed the persistent list. A digest file is a snapshot of one run; the list is
+# what still needs doing, and it outlives the file.
+if [ "$COUNT" -gt 0 ] && [ -f "$DIR/triage.py" ]; then
+  python3 "$DIR/triage.py" --ingest "$FILE" >>"$LOG" 2>&1 || true
+fi
+
 echo "$(date -Iseconds) ok, $COUNT action items -> $FILE" >>"$LOG"

@@ -305,7 +305,16 @@ def parse_meta(chunks) -> tuple[list[str], list[str]]:
     return flags, labels
 
 
-def search_uids(conn, last_uid: int | None, since_hours: int) -> list[int]:
+def search_uids(conn, last_uid: int | None, since_hours: int,
+                before_uid: int | None = None) -> list[int]:
+    """Newer than last_uid, or -- when sweeping the backlog -- older than
+    before_uid. Sweeping walks backwards from the baseline the first run set,
+    which is otherwise unreachable: the scheduled job only ever looks forward."""
+    if before_uid:
+        typ, data = conn.uid("SEARCH", None, "UID", f"1:{before_uid - 1}")
+        if typ != "OK" or not data or not data[0]:
+            return []
+        return sorted(u for u in (int(x) for x in data[0].split()) if u < before_uid)
     if last_uid:
         criteria = ["UID", f"{last_uid + 1}:*"]
     else:
@@ -501,7 +510,16 @@ def run_digest(accounts: list[dict], args, contacts: set[str]) -> dict:
                 summaries.append({**summary, "error": "select_failed", "detail": mailbox})
                 continue
 
-            uids, remaining = select_uids(search_uids(conn, last_uid, args.since_hours), args.max)
+            before = getattr(args, "before_uid", None)
+            found = search_uids(conn, None if before else last_uid,
+                                args.since_hours, before)
+            if before:
+                # Sweeping works newest-first: the most recent backlog is the
+                # most likely to still matter.
+                uids = sorted(sorted(found, reverse=True)[:args.max])
+                remaining = max(0, len(found) - args.max)
+            else:
+                uids, remaining = select_uids(found, args.max)
             truncated = remaining > 0
 
             dropped = 0
@@ -533,7 +551,8 @@ def run_digest(accounts: list[dict], args, contacts: set[str]) -> dict:
 
             summaries.append({**summary, "new_count": len(uids),
                               "bulk_dropped": dropped, "truncated": truncated,
-                              "remaining": remaining})
+                              "remaining": remaining,
+                              "lowest_scanned": min(uids) if uids else None})
         finally:
             close_quietly(conn)
 
@@ -703,6 +722,8 @@ def main() -> int:
                    help="Limit to this account name; repeatable. Default: all.")
     p.add_argument("--since-hours", type=int, default=24,
                    help="How far back to look on the very first run (default: 24).")
+    p.add_argument("--before-uid", type=int, default=None,
+                   help="sweep the backlog: read messages older than this UID")
     p.add_argument("--max", type=int, default=60, help="Cap on messages per account per run.")
     p.add_argument("--include-bulk", action="store_true", help="Keep newsletters and list mail.")
     p.add_argument("--reset", action="store_true", help="Forget saved position.")
