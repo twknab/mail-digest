@@ -150,6 +150,39 @@ Set `MAIL_DIGEST_LABEL` before `./install.sh` if you want a different launchd
 label. Digests land in `digests/`, and you get a notification only when
 something needs you.
 
+## 8b. Notifications and the menu bar
+
+`install.sh` compiles `notifier.applescript` into **MailDigest.app** and sends
+notifications through it. This matters: a bare `osascript -e 'display
+notification'` is attributed to `osascript`, which has no bundle identity, so
+macOS drops it silently and nothing appears in System Settings to allow. A
+compiled applet gets its own Notification Center entry.
+
+**The first notification may still not appear** until you allow it:
+System Settings → Notifications → **Mail Digest** → Allow Notifications.
+Send one to make it appear in that list:
+
+```bash
+open -a ./MailDigest.app --args "Mail digest" "test" ""
+```
+
+A failed notification is worse than an ugly one — a silent failure looks
+exactly like a quiet inbox, which is the one thing this tool must never do.
+
+### Menu bar (optional)
+
+`maildigest.5m.sh` is a [SwiftBar](https://swiftbar.app) plugin showing the
+current count, the items, and a Run now action:
+
+```bash
+brew install --cask swiftbar
+ln -s "$PWD/maildigest.5m.sh" ~/SwiftBar/maildigest.5m.sh
+```
+
+Set `MAIL_DIGEST_DIR` in the plugin if this folder is not at
+`~/Development/mail-digest`. It only reads files the scheduled run already
+wrote, so refreshing it never touches a mailbox.
+
 ## 9. Drafting a reply
 
 The digest ends each actionable item with a draft handle. Feed it to:
@@ -193,6 +226,8 @@ confirms your address is live, so we filter instead.
 | `junk_actions.py` | Unsubscribe executor. Dry run unless `--execute`. |
 | `sync-credentials.sh` | Copies app passwords from 1Password into the Keychain. |
 | `run-digest.sh` | Scheduled entry point: run, save, notify. |
+| `notifier.applescript` | Compiled to MailDigest.app so notifications have an identity. |
+| `maildigest.5m.sh` | Optional SwiftBar menu bar plugin. |
 | `accounts.json` | Your accounts. Never committed. No passwords. |
 | `~/.mail-digest/state.json` | Last-seen message per account. |
 | `~/.mail-digest/contacts.txt` | People who are never filtered. |

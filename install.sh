@@ -13,6 +13,19 @@ PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 [ -f "$DIR/accounts.json" ] || { echo "Missing $DIR/accounts.json — see SETUP.md step 4."; exit 1; }
 
 chmod +x "$DIR/run-digest.sh"
+
+# Build the notifier applet. Without a real bundle macOS silently drops the
+# notifications, which would make a quiet failure indistinguishable from a
+# quiet inbox -- the one thing this tool must never do.
+if [ ! -d "$DIR/MailDigest.app" ] && [ -f "$DIR/notifier.applescript" ]; then
+  osacompile -o "$DIR/MailDigest.app" "$DIR/notifier.applescript"
+  /usr/libexec/PlistBuddy -c "Add :CFBundleIdentifier string local.mail-digest.notifier" \
+    "$DIR/MailDigest.app/Contents/Info.plist" 2>/dev/null || true
+  /usr/libexec/PlistBuddy -c "Add :LSUIElement bool true" \
+    "$DIR/MailDigest.app/Contents/Info.plist" 2>/dev/null || true
+  codesign --force --deep -s - "$DIR/MailDigest.app" >/dev/null 2>&1 || true
+  echo "Built MailDigest.app (allow its notifications in System Settings)."
+fi
 mkdir -p "$HOME/Library/LaunchAgents" "$DIR/digests"
 
 # Render and validate in a temp file BEFORE touching the installed plist. A `>`

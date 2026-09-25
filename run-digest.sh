@@ -10,6 +10,18 @@ OUT="$DIR/digests"
 LOG="$DIR/digest.log"
 mkdir -p "$OUT"
 
+# Notifications go through MailDigest.app, not bare osascript. A bare
+# `osascript -e 'display notification'` is attributed to osascript, which has
+# no bundle identity, so macOS drops it silently and there is nothing in System
+# Settings to allow. A compiled applet gets its own Notification Center entry.
+notify() {
+  if [ -d "$DIR/MailDigest.app" ]; then
+    open -a "$DIR/MailDigest.app" --args "Mail digest" "$1" "${2:-}" 2>/dev/null && return
+  fi
+  # Fallback for a checkout where install.sh has not built the applet yet.
+  osascript -e "display notification \"$1\" with title \"Mail digest\"" 2>/dev/null
+}
+
 STAMP="$(date +%Y-%m-%d-%H%M)"
 FILE="$OUT/$STAMP.md"
 
@@ -21,7 +33,7 @@ if [ -z "$CLAUDE" ]; then
   # Nobody is watching at 08:07. A silent exit here looks exactly like a quiet
   # inbox, so this failure has to be as loud as any other.
   echo "$(date -Iseconds) claude not on PATH ($PATH)" >>"$LOG"
-  osascript -e 'display notification "claude is not on the scheduled PATH — no digest ran" with title "Mail digest" sound name "Ping"' 2>/dev/null
+  notify "claude is not on the scheduled PATH — no digest ran"
   exit 127
 fi
 
@@ -39,7 +51,7 @@ if ! "$CLAUDE" -p "$PROMPT" \
       --allowedTools "Bash(python3 $DIR/mail_digest.py:*)" \
       >>"$FILE" 2>>"$LOG"; then
   echo "$(date -Iseconds) claude exited non-zero; see $FILE" >>"$LOG"
-  osascript -e 'display notification "The digest run failed — see digest.log" with title "Mail digest"' 2>/dev/null
+  notify "The digest run failed — see digest.log"
   exit 1
 fi
 
@@ -51,13 +63,13 @@ COUNT="$(grep -oE '^ACTION_ITEMS:[[:space:]]*[0-9]+' "$FILE" | grep -oE '[0-9]+'
 # product. Warn instead of reporting a number we did not read.
 if [ -z "$COUNT" ]; then
   echo "$(date -Iseconds) WARNING no ACTION_ITEMS marker -> $FILE" >>"$LOG"
-  osascript -e 'display notification "Digest ran but reported no item count — open it and check" with title "Mail digest" sound name "Ping"' 2>/dev/null
+  notify "Digest ran but reported no item count — open it and check"
   exit 2
 fi
 
 if [ "$COUNT" -gt 0 ]; then
   PLURAL="items"; [ "$COUNT" -eq 1 ] && PLURAL="item"
-  osascript -e "display notification \"$COUNT $PLURAL need you\" with title \"Mail digest\" subtitle \"$(date '+%H:%M')\" sound name \"Ping\"" 2>/dev/null
+  notify "$COUNT $PLURAL need you" "$(date '+%H:%M')"
 fi
 
 echo "$(date -Iseconds) ok, $COUNT action items -> $FILE" >>"$LOG"
