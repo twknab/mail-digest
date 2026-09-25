@@ -33,6 +33,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from email.header import decode_header, make_header
@@ -230,6 +231,40 @@ def known_contact(sender_addr: str, contacts: set[str]) -> bool:
     if not sender_addr:
         return False
     return sender_addr in contacts or domain_of(sender_addr) in contacts
+
+
+STATUS_FILE = HOME_DIR / "status"
+# Only poke the menu bar if it is actually installed; otherwise the status file
+# is written for anyone who wants it and nothing is spawned.
+SWIFTBAR = Path("/Applications/SwiftBar.app")
+
+
+def progress(percent: int, label: str) -> None:
+    """Publish run progress for the menu bar, then nudge it to redraw.
+
+    Best effort in every sense: a digest must never fail because a status file
+    could not be written, so everything here is swallowed. SwiftBar refreshes
+    on a timer far too slow to show a run that lasts seconds, so each stage
+    pushes rather than waiting to be polled.
+    """
+    try:
+        HOME_DIR.mkdir(parents=True, exist_ok=True)
+        STATUS_FILE.write_text(f"{int(time.time())}|{max(0, min(100, percent))}|{label}\n")
+        if SWIFTBAR.exists():
+            subprocess.run(["open", "-g", "swiftbar://refreshplugin?name=maildigest"],
+                           capture_output=True, timeout=3)
+    except Exception:
+        pass
+
+
+def clear_progress() -> None:
+    try:
+        STATUS_FILE.unlink(missing_ok=True)
+        if SWIFTBAR.exists():
+            subprocess.run(["open", "-g", "swiftbar://refreshplugin?name=maildigest"],
+                           capture_output=True, timeout=3)
+    except Exception:
+        pass
 
 
 def die(code: str, detail: str) -> None:
@@ -440,8 +475,11 @@ def run_digest(accounts: list[dict], args, contacts: set[str]) -> dict:
     state = {} if args.reset else load_state()
     summaries, messages = [], []
 
-    for account in accounts:
+    total = len(accounts)
+    for index, account in enumerate(accounts):
         name = account["name"]
+        # 10..75% spans the mailbox reads; the rest belongs to triage.
+        progress(10 + int(65 * index / max(1, total)), f"reading {name}")
         mailbox = account.get("mailbox", "INBOX")
         key = f"{name}:{mailbox}"
         last_uid = state.get(key, {}).get("last_uid")
@@ -502,6 +540,7 @@ def run_digest(accounts: list[dict], args, contacts: set[str]) -> dict:
     if not args.no_save:
         save_state(state)
 
+    progress(75, "triaging")
     return {
         "mode": "digest",
         "checked_at": datetime.now(timezone.utc).isoformat(),

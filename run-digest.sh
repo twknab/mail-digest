@@ -53,6 +53,26 @@ notify() {
   fi
 }
 
+# Publish coarse stages for the menu bar. mail_digest.py fills in the detail
+# between them, since claude -p is opaque from out here. Each stage pushes a
+# refresh because SwiftBar's own interval is far slower than a run.
+STATUS="$HOME/.mail-digest/status"
+stage() {
+  mkdir -p "$HOME/.mail-digest" 2>/dev/null
+  printf '%s|%s|%s\n' "$(date +%s)" "$1" "$2" >"$STATUS" 2>/dev/null
+  [ -d /Applications/SwiftBar.app ] && open -g "swiftbar://refreshplugin?name=maildigest" >/dev/null 2>&1
+  return 0   # never let a missing menu bar affect the run's exit status
+}
+end_stage() {
+  rm -f "$STATUS" 2>/dev/null
+  [ -d /Applications/SwiftBar.app ] && open -g "swiftbar://refreshplugin?name=maildigest" >/dev/null 2>&1
+  return 0   # this runs as an EXIT trap; it must not disturb the exit status
+}
+# Never leave a stale bar on screen if the run dies part way.
+trap end_stage EXIT
+
+stage 3 "starting"
+
 STAMP="$(date +%Y-%m-%d-%H%M)"
 FILE="$OUT/$STAMP.md"
 
@@ -78,6 +98,8 @@ fi
 # prompt with nobody there to answer it.
 PROMPT="$(sed "s|~/mail-digest|$DIR|g" "$DIR/prompt-digest.md")"
 
+stage 8 "connecting"
+
 if ! "$CLAUDE" -p "$PROMPT" \
       --allowedTools "Bash(python3 $DIR/mail_digest.py:*)" \
       >>"$FILE" 2>>"$LOG"; then
@@ -85,6 +107,8 @@ if ! "$CLAUDE" -p "$PROMPT" \
   notify "The digest run failed — see digest.log"
   exit 1
 fi
+
+stage 92 "writing digest"
 
 COUNT="$(grep -oE '^ACTION_ITEMS:[[:space:]]*[0-9]+' "$FILE" | grep -oE '[0-9]+' | tail -1)"
 
