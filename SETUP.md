@@ -190,6 +190,26 @@ you are missing alerts.
 
 ### Menu bar
 
+A small dot, coloured by state:
+
+| Dot | Means |
+| --- | --- |
+| green | all caught up — nothing outstanding, or you dismissed it |
+| orange + count | that many items need you |
+| orange | the last digest reported no item count — open it and check |
+| grey | a run is in progress, or there is no digest yet |
+
+**Mark all caught up** turns the dot green without opening anything. It is
+per-digest, not a global mute: the next run writes a new file, so anything
+arriving afterwards goes orange again. Dismissing can never hide new mail.
+
+**View latest digest** opens a rendered page — dark mode, grouped by inbox,
+with each draft command as a click-to-select chip. **All digests** gives an
+index of every past run. Both are produced by `viewer.py`, which writes
+standalone HTML to `~/.mail-digest/view/` and needs no server and no
+dependencies.
+
+
 `maildigest.5m.sh` is a SwiftBar plugin showing the current count, the items
 grouped by inbox, and a Run now action:
 
@@ -244,7 +264,9 @@ confirms your address is live, so we filter instead.
 | `junk_actions.py` | Unsubscribe executor. Dry run unless `--execute`. |
 | `sync-credentials.sh` | Copies app passwords from 1Password into the Keychain. |
 | `run-digest.sh` | Scheduled entry point: run, save, notify. |
-| `maildigest.5m.sh` | SwiftBar menu bar plugin, and SwiftBar delivers notifications. |
+| `maildigest.5m.sh` | SwiftBar menu bar plugin; SwiftBar also delivers notifications. |
+| `viewer.py` | Renders a digest as standalone HTML. No server, no deps. |
+| `ack.sh` | Marks the newest digest seen, turning the dot green. |
 | `accounts.json` | Your accounts. Never committed. No passwords. |
 | `~/.mail-digest/state.json` | Last-seen message per account. |
 | `~/.mail-digest/contacts.txt` | People who are never filtered. |
