@@ -192,12 +192,23 @@ you are missing alerts.
 
 A small dot, coloured by state:
 
-| Dot | Means |
+| Menu bar | Means |
 | --- | --- |
-| green | all caught up — nothing outstanding, or you dismissed it |
-| orange + count | that many items need you |
-| orange | the last digest reported no item count — open it and check |
-| grey | a run is in progress, or there is no digest yet |
+| green ● | all caught up — nothing outstanding, or you dismissed it |
+| orange ● + count | that many items need you |
+| orange ● | the last digest reported no item count — open it and check |
+| blue ○ ◔ ◑ ◕ ● | a run is in progress; the circle fills as it goes |
+| grey ● | no digest yet |
+
+While a run is going the dropdown shows the stage and a bar —
+`reading gmail-twknab · 42%  ▰▰▰▰▰▱▱▱▱▱`. The detail comes from
+`mail_digest.py` as it walks each account, since `claude -p` is opaque from
+outside, and each stage pushes a refresh rather than waiting to be polled: a
+whole run takes about fifteen seconds and the plugin's own interval is five
+minutes.
+
+The menu bar deliberately keeps a single fixed-width glyph rather than a bar,
+which would change width every few seconds and shove every other icon around.
 
 **Mark all caught up** turns the dot green without opening anything. It is
 per-digest, not a global mute: the next run writes a new file, so anything

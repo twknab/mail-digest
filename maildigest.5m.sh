@@ -24,6 +24,7 @@ fi
 GREEN="#4a9d6e"
 ORANGE="#e09055"
 GREY="#8a8782"
+BLUE="#4a90d9"
 
 menu_actions() {
   echo "---"
@@ -50,12 +51,20 @@ if [ -f "$STATUS_FILE" ]; then
     for i in 1 2 3 4 5 6 7 8 9 10; do
       if [ "$i" -le "$filled" ]; then bar="$bar▰"; else bar="$bar▱"; fi
     done
-    # The bar belongs in the dropdown, not the menu bar -- a bar that changes
-    # width every few seconds shoves every other menu bar icon around.
-    echo "● | color=$GREY size=11"
+
+    # The menu bar keeps a single steady-width glyph that fills as the run
+    # advances -- a bar up there would change width every few seconds and shove
+    # every other icon around. These five glyphs are all the same width.
+    if   [ "$st_pct" -ge 88 ]; then glyph="●"
+    elif [ "$st_pct" -ge 63 ]; then glyph="◕"
+    elif [ "$st_pct" -ge 38 ]; then glyph="◑"
+    elif [ "$st_pct" -ge 10 ]; then glyph="◔"
+    else                            glyph="○"
+    fi
+    echo "$glyph | color=$BLUE size=11"
     echo "---"
-    echo "${st_label:-working} · ${st_pct}% | color=$GREY"
-    echo "$bar | color=$GREY size=13 font=Menlo"
+    echo "${st_label:-working} · ${st_pct}% | color=$BLUE"
+    echo "$bar | color=$BLUE size=13 font=Menlo"
     menu_actions
     echo "---"
     tail -1 "$LOG" 2>/dev/null | sed 's/$/ | size=10 color=#8a8782/'
