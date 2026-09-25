@@ -28,11 +28,23 @@ BLUE="#4a90d9"
 
 menu_actions() {
   echo "---"
-  echo "View latest digest | bash=$PY3 param1=$DIR/viewer.py terminal=false"
-  echo "All digests | bash=$PY3 param1=$DIR/viewer.py param2=--list terminal=false"
-  echo "Run now | bash=/bin/launchctl param1=kickstart param2=-k param3=gui/$(id -u)/local.mail-digest terminal=false refresh=true"
+  echo "View latest digest | shell=/bin/sh param1=-c param2=\"$PY3 $DIR/viewer.py\" terminal=false"
+  echo "All digests | shell=/bin/sh param1=-c param2=\"$PY3 $DIR/viewer.py --list\" terminal=false"
+  echo "Run now | shell=/bin/sh param1=-c param2=\"/bin/launchctl kickstart -k gui/$(id -u)/local.mail-digest\" terminal=false refresh=true"
   echo "---"
-  echo "About Mail Digest | bash=$PY3 param1=$DIR/viewer.py param2=--about terminal=false"
+  # The About content lives here as a submenu rather than only behind a click,
+  # so the entry is never an empty menu.
+  echo "About Mail Digest"
+  echo "--Mail Digest | size=13"
+  echo "--Three weekday digests of the mail that actually needs you. | size=11 color=$GREY"
+  echo "-----"
+  echo "--Runs entirely on this Mac | size=11 color=$GREY"
+  echo "--Nothing uploaded, no password in a file | size=11 color=$GREY"
+  echo "--Read-only: a run never marks mail as read | size=11 color=$GREY"
+  echo "--Replies are drafted, never sent | size=11 color=$GREY"
+  echo "-----"
+  echo "--Open the About page | shell=/bin/sh param1=-c param2=\"$PY3 $DIR/viewer.py --about\" terminal=false"
+  echo "--timknab.dev | href=https://timknab.dev color=$BLUE"
 }
 
 latest="$(ls -t "$OUT"/*.md 2>/dev/null | head -1)"
@@ -121,7 +133,7 @@ if [ "$open_n" -gt 0 ]; then
     [ -n "$id" ] || continue
     short="$subject"
     [ ${#short} -gt 54 ] && short="$(printf '%.51s...' "$short")"
-    echo "• $short | bash=$PY3 param1=$DIR/triage.py param2=--done param3=$id terminal=false refresh=true"
+    echo "• $short | shell=/bin/sh param1=-c param2=\"$PY3 $DIR/triage.py --done $id\" terminal=false refresh=true"
     echo "-- $inbox | color=$GREY size=11"
   done
 fi

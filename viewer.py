@@ -15,7 +15,7 @@ from __future__ import annotations
 import argparse
 import html
 import re
-import webbrowser
+import subprocess
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -76,8 +76,44 @@ a{color:var(--accent)}
 .tagline{color:var(--muted);margin:0 0 30px}
 .facts{text-align:left;max-width:460px;margin:0 auto;border-top:1px solid var(--line);padding-top:22px}
 .facts p{font-size:14.5px;color:var(--muted);margin:0 0 14px}
-.by{margin-top:34px;color:var(--muted);font-size:13px}
+.by{margin-top:38px;color:var(--muted);font-size:13px}
+/* The one place this page is allowed to show off. */
+.psy{position:relative;font-weight:600;text-decoration:none;
+ background:linear-gradient(90deg,#ff5f6d,#ffc371,#47e5bc,#4a90d9,#a06cd5,#ff5f6d);
+ background-size:300% 100%;-webkit-background-clip:text;background-clip:text;
+ -webkit-text-fill-color:transparent;color:transparent;
+ animation:drift 7s linear infinite}
+.psy::after{content:"";position:absolute;left:0;right:0;bottom:-3px;height:1.5px;border-radius:2px;
+ background:linear-gradient(90deg,#ff5f6d,#ffc371,#47e5bc,#4a90d9,#a06cd5,#ff5f6d);
+ background-size:300% 100%;animation:drift 7s linear infinite;opacity:.55}
+.psy:hover{animation-duration:1.6s}
+.psy:hover::after{animation-duration:1.6s;opacity:1;
+ filter:drop-shadow(0 0 6px rgba(160,108,213,.8))}
+@keyframes drift{to{background-position:300% 0}}
+@media (prefers-reduced-motion:reduce){
+  .psy,.psy::after{animation:none;background-position:22% 0}
+}
 """
+
+
+
+def show(path: Path) -> None:
+    """Hand the file to macOS itself.
+
+    webbrowser falls back to MacOSXOSAScript, which drives the browser through
+    osascript -- the same mechanism that silently fails from a restricted
+    context like a menu bar plugin. `open` is the native path and works from
+    anywhere.
+    """
+    try:
+        subprocess.run(["open", str(path)], capture_output=True, timeout=10, check=True)
+    except Exception:
+        # Last resort, and the path is printed regardless so it is never lost.
+        try:
+            import webbrowser
+            webbrowser.open(path.as_uri())
+        except Exception:
+            pass
 
 
 def inline(text: str) -> str:
@@ -222,7 +258,7 @@ def render_about() -> str:
     <p>Replies are drafted into your Drafts folder and never sent \u2014 the
        drafting module holds no SMTP capability at all.</p>
   </div>
-  <p class='by'>Built by <a href='https://timknab.dev'>timknab.dev</a></p>
+  <p class='by'>Built by <a class='psy' href='https://timknab.dev'>timknab.dev</a></p>
 </div>""")
 
 
@@ -260,7 +296,7 @@ def main() -> int:
         target.write_text(render_about())
         print(target)
         if not args.no_open:
-            webbrowser.open(target.as_uri())
+            show(target)
         return 0
 
     files = sorted(DIGESTS.glob("*.md"), reverse=True)
@@ -276,7 +312,7 @@ def main() -> int:
     target = VIEW_DIR / ("index.html" if args.list else f"{(args.file or files[0]).stem}.html")
     print(target)
     if not args.no_open:
-        webbrowser.open(target.as_uri())
+        show(target)
     return 0
 
 
