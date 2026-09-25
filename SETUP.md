@@ -150,32 +150,50 @@ Set `MAIL_DIGEST_LABEL` before `./install.sh` if you want a different launchd
 label. Digests land in `digests/`, and you get a notification only when
 something needs you.
 
-## 8b. Notifications and the menu bar
+## 8b. Notifications need a signed helper
 
-`install.sh` compiles `notifier.applescript` into **MailDigest.app** and sends
-notifications through it. This matters: a bare `osascript -e 'display
-notification'` is attributed to `osascript`, which has no bundle identity, so
-macOS drops it silently and nothing appears in System Settings to allow. A
-compiled applet gets its own Notification Center entry.
+This is the part that most easily fails silently, so it is worth getting right.
 
-**The first notification may still not appear** until you allow it:
-System Settings → Notifications → **Mail Digest** → Allow Notifications.
-Send one to make it appear in that list:
+macOS will only deliver a notification on behalf of a **properly signed
+application**. Two things that look like they should work do not:
+
+- `osascript -e 'display notification ...'` is attributed to `osascript`, which
+  has no bundle identity. macOS drops it and **returns success**, so the script
+  cannot tell. Nothing appears in System Settings to allow.
+- A locally compiled AppleScript applet is ad-hoc signed with no Team ID, so
+  Notification Center will not register it either. Tried and removed — it ran
+  cleanly, exited 0, and delivered nothing.
+
+A notification that never arrives looks exactly like a quiet inbox, which is
+the one failure this tool cannot have. So install one of these:
 
 ```bash
-open -a ./MailDigest.app --args "Mail digest" "test" ""
+brew install --cask swiftbar        # recommended -- also gives you the menu bar
+brew install terminal-notifier      # then allow it in System Settings
 ```
 
-A failed notification is worse than an ugly one — a silent failure looks
-exactly like a quiet inbox, which is the one thing this tool must never do.
+**SwiftBar is the tested route.** `terminal-notifier` works too, but only after
+you allow it under System Settings → Notifications; until then it exits 3 with
+`Notifications are not allowed for this application` — which at least is a
+*detectable* failure, unlike osascript.
 
-### Menu bar (optional)
+`run-digest.sh` tries terminal-notifier, then SwiftBar, then osascript, and
+**logs which route delivered**:
 
-`maildigest.5m.sh` is a [SwiftBar](https://swiftbar.app) plugin showing the
-current count, the items, and a Run now action:
+```
+2026-09-25T14:29:02-07:00 notified via swiftbar: 1 item needs you
+```
+
+If every route fails it writes `NOTIFY FAILED (every route refused)` rather
+than letting the run look successful. Check `digest.log` if you ever suspect
+you are missing alerts.
+
+### Menu bar
+
+`maildigest.5m.sh` is a SwiftBar plugin showing the current count, the items
+grouped by inbox, and a Run now action:
 
 ```bash
-brew install --cask swiftbar
 ln -s "$PWD/maildigest.5m.sh" ~/SwiftBar/maildigest.5m.sh
 ```
 
@@ -226,8 +244,7 @@ confirms your address is live, so we filter instead.
 | `junk_actions.py` | Unsubscribe executor. Dry run unless `--execute`. |
 | `sync-credentials.sh` | Copies app passwords from 1Password into the Keychain. |
 | `run-digest.sh` | Scheduled entry point: run, save, notify. |
-| `notifier.applescript` | Compiled to MailDigest.app so notifications have an identity. |
-| `maildigest.5m.sh` | Optional SwiftBar menu bar plugin. |
+| `maildigest.5m.sh` | SwiftBar menu bar plugin, and SwiftBar delivers notifications. |
 | `accounts.json` | Your accounts. Never committed. No passwords. |
 | `~/.mail-digest/state.json` | Last-seen message per account. |
 | `~/.mail-digest/contacts.txt` | People who are never filtered. |

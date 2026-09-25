@@ -10,16 +10,47 @@ OUT="$DIR/digests"
 LOG="$DIR/digest.log"
 mkdir -p "$OUT"
 
-# Notifications go through MailDigest.app, not bare osascript. A bare
-# `osascript -e 'display notification'` is attributed to osascript, which has
-# no bundle identity, so macOS drops it silently and there is nothing in System
-# Settings to allow. A compiled applet gets its own Notification Center entry.
+# Delivering a notification on macOS is not guaranteed, and the failure is
+# usually silent -- which is the worst possible outcome here, because a
+# notification that never arrives looks exactly like a quiet inbox.
+#
+# So: try each route in order of how well it reports failure, and LOG the
+# outcome either way. If every route fails, say so loudly in the log rather
+# than letting the run look successful.
+#
+#   terminal-notifier  properly signed, and exits non-zero when macOS refuses
+#   SwiftBar           properly signed; present if you use the menu bar plugin
+#   osascript          last resort; returns 0 even when the notification is
+#                      dropped, so it can never be trusted on its own
+#
+# A locally compiled AppleScript applet was tried and removed: macOS will not
+# register an ad-hoc-signed app with Notification Center, so it ran cleanly,
+# exited 0, and delivered nothing -- the exact failure this guards against.
 notify() {
-  if [ -d "$DIR/MailDigest.app" ]; then
-    open -a "$DIR/MailDigest.app" --args "Mail digest" "$1" "${2:-}" 2>/dev/null && return
+  local message="$1" subtitle="${2:-}" route=""
+
+  if command -v terminal-notifier >/dev/null 2>&1; then
+    if terminal-notifier -title "Mail digest" -subtitle "$subtitle" \
+         -message "$message" -sound Ping >/dev/null 2>&1; then
+      route="terminal-notifier"
+    fi
   fi
-  # Fallback for a checkout where install.sh has not built the applet yet.
-  osascript -e "display notification \"$1\" with title \"Mail digest\"" 2>/dev/null
+
+  if [ -z "$route" ] && [ -d "/Applications/SwiftBar.app" ]; then
+    if open "swiftbar://notify?plugin=maildigest&title=Mail%20digest&body=$(printf %s "$message" | sed 's/ /%20/g')" 2>/dev/null; then
+      route="swiftbar"
+    fi
+  fi
+
+  if [ -z "$route" ]; then
+    osascript -e "display notification \"$message\" with title \"Mail digest\"" 2>/dev/null && route="osascript(unverified)"
+  fi
+
+  if [ -z "$route" ]; then
+    echo "$(date -Iseconds) NOTIFY FAILED (every route refused): $message" >>"$LOG"
+  else
+    echo "$(date -Iseconds) notified via $route: $message" >>"$LOG"
+  fi
 }
 
 STAMP="$(date +%Y-%m-%d-%H%M)"

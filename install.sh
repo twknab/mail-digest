@@ -14,18 +14,15 @@ PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 
 chmod +x "$DIR/run-digest.sh"
 
-# Build the notifier applet. Without a real bundle macOS silently drops the
-# notifications, which would make a quiet failure indistinguishable from a
-# quiet inbox -- the one thing this tool must never do.
-if [ ! -d "$DIR/MailDigest.app" ] && [ -f "$DIR/notifier.applescript" ]; then
-  osacompile -o "$DIR/MailDigest.app" "$DIR/notifier.applescript"
-  /usr/libexec/PlistBuddy -c "Add :CFBundleIdentifier string local.mail-digest.notifier" \
-    "$DIR/MailDigest.app/Contents/Info.plist" 2>/dev/null || true
-  /usr/libexec/PlistBuddy -c "Add :LSUIElement bool true" \
-    "$DIR/MailDigest.app/Contents/Info.plist" 2>/dev/null || true
-  codesign --force --deep -s - "$DIR/MailDigest.app" >/dev/null 2>&1 || true
-  echo "Built MailDigest.app (allow its notifications in System Settings)."
+# Notifications need a properly signed helper. macOS will not register an
+# ad-hoc-signed app with Notification Center, and bare osascript has no bundle
+# identity at all, so both fail silently. run-digest.sh uses terminal-notifier
+# or SwiftBar and logs which route delivered -- see SETUP.md.
+if ! command -v terminal-notifier >/dev/null 2>&1 && [ ! -d "/Applications/SwiftBar.app" ]; then
+  echo "Warning: no signed notification helper found. Install one, or the digest"
+  echo "         will run silently: brew install terminal-notifier"
 fi
+
 mkdir -p "$HOME/Library/LaunchAgents" "$DIR/digests"
 
 # Render and validate in a temp file BEFORE touching the installed plist. A `>`

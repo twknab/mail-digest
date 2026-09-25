@@ -14,5 +14,3 @@ __pycache__/
 # Personal, machine-specific action list — keep local, do not publish.
 DO_THIS_NEXT.md
 
-# Built by install.sh from notifier.applescript
-MailDigest.app/
