@@ -1,0 +1,15 @@
+# Your real accounts — addresses and mailbox names, not secrets, but not
+# something to publish either. Keychain holds the passwords.
+accounts.json
+
+# Generated output
+digests/
+*.log
+plan.json
+report.json
+
+__pycache__/
+*.pyc
+
+# Personal, machine-specific action list — keep local, do not publish.
+DO_THIS_NEXT.md

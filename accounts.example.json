@@ -1,0 +1,27 @@
+{
+  "_comment": "Copy to accounts.json and edit. No passwords here - they live in the macOS Keychain, looked up by keychain_service + user.",
+  "accounts": [
+    {
+      "name": "icloud",
+      "host": "imap.mail.me.com",
+      "port": 993,
+      "user": "you@icloud.com",
+      "mailbox": "INBOX",
+      "sent_mailbox": "Sent Messages",
+      "smtp_host": "smtp.mail.me.com",
+      "smtp_port": 587,
+      "keychain_service": "mail-digest-icloud"
+    },
+    {
+      "name": "gmail",
+      "host": "imap.gmail.com",
+      "port": 993,
+      "user": "you@gmail.com",
+      "mailbox": "INBOX",
+      "sent_mailbox": "[Gmail]/Sent Mail",
+      "smtp_host": "smtp.gmail.com",
+      "smtp_port": 587,
+      "keychain_service": "mail-digest-gmail"
+    }
+  ]
+}
