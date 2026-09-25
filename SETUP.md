@@ -197,7 +197,7 @@ A small dot, coloured by state:
 | green ● | all caught up — nothing outstanding, or you dismissed it |
 | orange ● + count | that many items need you |
 | orange ● | the last digest reported no item count — open it and check |
-| blue ○ ◔ ◑ ◕ ● | a run is in progress; the circle fills as it goes |
+| blue ○ | a run is in progress |
 | grey ● | no digest yet |
 
 While a run is going the dropdown shows the stage and a bar —
@@ -207,8 +207,9 @@ outside, and each stage pushes a refresh rather than waiting to be polled: a
 whole run takes about fifteen seconds and the plugin's own interval is five
 minutes.
 
-The menu bar deliberately keeps a single fixed-width glyph rather than a bar,
-which would change width every few seconds and shove every other icon around.
+The menu bar stays a plain hollow circle rather than animating: the dropdown
+already carries the detail, and a bar or a changing glyph up there would shift
+every other icon on each refresh.
 
 **Mark all caught up** turns the dot green without opening anything. It is
 per-digest, not a global mute: the next run writes a new file, so anything

@@ -52,16 +52,10 @@ if [ -f "$STATUS_FILE" ]; then
       if [ "$i" -le "$filled" ]; then bar="$bar▰"; else bar="$bar▱"; fi
     done
 
-    # The menu bar keeps a single steady-width glyph that fills as the run
-    # advances -- a bar up there would change width every few seconds and shove
-    # every other icon around. These five glyphs are all the same width.
-    if   [ "$st_pct" -ge 88 ]; then glyph="●"
-    elif [ "$st_pct" -ge 63 ]; then glyph="◕"
-    elif [ "$st_pct" -ge 38 ]; then glyph="◑"
-    elif [ "$st_pct" -ge 10 ]; then glyph="◔"
-    else                            glyph="○"
-    fi
-    echo "$glyph | color=$BLUE size=11"
+    # A hollow blue circle just means "running". The dropdown carries the
+    # detail, so the menu bar does not need to animate -- and a glyph that
+    # changes on every refresh is noise for something that lasts 15 seconds.
+    echo "○ | color=$BLUE size=11"
     echo "---"
     echo "${st_label:-working} · ${st_pct}% | color=$BLUE"
     echo "$bar | color=$BLUE size=13 font=Menlo"
