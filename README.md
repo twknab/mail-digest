@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/icon.svg" width="96" alt="Mail Digest">
+  <img src="docs/icon.png" width="96" alt="Mail Digest">
 </p>
 
 <h1 align="center">Mail Digest</h1>
