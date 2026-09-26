@@ -25,6 +25,7 @@ address the message was sent to**. It cannot send.
 
 **The digest** — grouped by the inbox each message arrived at, needs-action
 accented, worth-knowing dimmed, every draft command a click-to-select chip.
+(Sample data; the real thing shows your mail.)
 
 ![Digest](docs/screenshot-digest.png)
 
@@ -130,6 +131,12 @@ done
 ```
 
 No network and no mailbox required.
+
+---
+
+## Licence
+
+[MIT](LICENSE) — Copyright (c) 2026 Tim Knab.
 
 ---
 
