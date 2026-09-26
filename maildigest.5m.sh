@@ -37,14 +37,13 @@ menu_actions() {
   echo "---"
   # The About content lives here as a submenu rather than only behind a click,
   # so the entry is never an empty menu.
-  # Flat lines, no submenu: "--" is SwiftBar's submenu prefix and getting that
-  # structure subtly wrong renders an empty menu with no error anywhere.
-  echo "Mail Digest | size=13"
-  echo "Three weekday digests of the mail that needs you | color=$GREY size=11"
-  echo "Read-only — a run never marks mail as read | color=$GREY size=11"
-  echo "Replies are drafted, never sent | color=$GREY size=11"
-  echo "Open the About page | href=file://$VIEW/about.html"
-  echo "timknab.dev | href=https://timknab.dev color=$BLUE"
+  # One entry. The blurb and the timknab.dev credit live in the About window
+  # itself, not scattered through a context menu.
+  #
+  # Note: SwiftBar appends its own section below this -- "Run in Terminal",
+  # "Disable Plugin" and an "About" that is SwiftBar's, not ours. That one
+  # cannot be changed from a plugin.
+  echo "About Mail Digest | href=file://$VIEW/about.html"
 }
 
 latest="$(ls -t "$OUT"/*.md 2>/dev/null | head -1)"
