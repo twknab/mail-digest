@@ -1,4 +1,13 @@
 #!/bin/bash
+# <swiftbar.title>Mail Digest</swiftbar.title>
+# <swiftbar.author>timknab</swiftbar.author>
+# <swiftbar.desc>Digests of the mail that actually needs you.</swiftbar.desc>
+# <swiftbar.hideAbout>true</swiftbar.hideAbout>
+# <swiftbar.hideRunInTerminal>true</swiftbar.hideRunInTerminal>
+# <swiftbar.hideLastUpdated>true</swiftbar.hideLastUpdated>
+# <swiftbar.hideDisablePlugin>true</swiftbar.hideDisablePlugin>
+# <swiftbar.hideSwiftBar>false</swiftbar.hideSwiftBar>
+#
 # SwiftBar plugin. Symlink into your SwiftBar plugin folder:
 #
 #   ln -s "$PWD/maildigest.5m.sh" ~/SwiftBar/maildigest.5m.sh
@@ -43,7 +52,7 @@ menu_actions() {
   # Note: SwiftBar appends its own section below this -- "Run in Terminal",
   # "Disable Plugin" and an "About" that is SwiftBar's, not ours. That one
   # cannot be changed from a plugin.
-  echo "About Mail Digest | href=file://$VIEW/about.html"
+  echo "About | shell=$DIR/about.sh terminal=false"
 }
 
 latest="$(ls -t "$OUT"/*.md 2>/dev/null | head -1)"

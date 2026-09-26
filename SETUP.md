@@ -279,6 +279,7 @@ confirms your address is live, so we filter instead.
 | `sync-credentials.sh` | Copies app passwords from 1Password into the Keychain. |
 | `run-digest.sh` | Scheduled entry point: run, save, notify. |
 | `maildigest.5m.sh` | SwiftBar menu bar plugin; SwiftBar also delivers notifications. |
+| `about.sh` | Native About panel for the menu bar. |
 | `viewer.py` | Renders a digest as standalone HTML. No server, no deps. |
 | `ack.sh` | Marks the newest digest seen, turning the dot green. |
 | `accounts.json` | Your accounts. Never committed. No passwords. |
