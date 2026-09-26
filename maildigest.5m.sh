@@ -28,8 +28,11 @@ BLUE="#4a90d9"
 
 menu_actions() {
   echo "---"
-  echo "View latest digest | shell=/bin/sh param1=-c param2=\"$PY3 $DIR/viewer.py\" terminal=false"
-  echo "All digests | shell=/bin/sh param1=-c param2=\"$PY3 $DIR/viewer.py --list\" terminal=false"
+  # Sort by NAME, not mtime: regenerating every page gives them all the same
+  # mtime, and the filenames are already timestamps.
+  latest_html="$(ls -1 "$VIEW"/2*.html 2>/dev/null | sort -r | head -1)"
+  [ -n "$latest_html" ] && echo "View latest digest | href=file://$latest_html"
+  [ -f "$VIEW/index.html" ] && echo "All digests | href=file://$VIEW/index.html"
   echo "Run now | shell=/bin/sh param1=-c param2=\"/bin/launchctl kickstart -k gui/$(id -u)/local.mail-digest\" terminal=false refresh=true"
   echo "---"
   # The About content lives here as a submenu rather than only behind a click,
@@ -40,11 +43,18 @@ menu_actions() {
   echo "Three weekday digests of the mail that needs you | color=$GREY size=11"
   echo "Read-only — a run never marks mail as read | color=$GREY size=11"
   echo "Replies are drafted, never sent | color=$GREY size=11"
-  echo "Open the About page | shell=/bin/sh param1=-c param2=\"$PY3 $DIR/viewer.py --about\" terminal=false"
+  echo "Open the About page | href=file://$VIEW/about.html"
   echo "timknab.dev | href=https://timknab.dev color=$BLUE"
 }
 
 latest="$(ls -t "$OUT"/*.md 2>/dev/null | head -1)"
+
+# Render the HTML here, so the menu items are plain href= links that SwiftBar
+# opens itself. Shelling out on click meant sh -> python -> open, three places
+# to fail silently, and a menu item that does nothing gives no clue why.
+VIEW="$HOME/.mail-digest/view"
+"$PY3" "$DIR/viewer.py" --about --no-open >/dev/null 2>&1
+"$PY3" "$DIR/viewer.py" --no-open >/dev/null 2>&1
 
 # A run in flight publishes epoch|percent|label. Show a bar while that is
 # fresh; a stale file means the run died without clearing it, so ignore it

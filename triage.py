@@ -83,7 +83,12 @@ def parse_digest(text: str) -> list[dict]:
             subject = m.group(1).strip()
             continue
         m = re.search(r"draft:\s*--account\s+(\S+)\s+--uid\s+(\d+)", line)
-        if m and bucket == "act":
+        # The handle itself is the signal: the prompt only permits it on
+        # needs-action items. Requiring an explicit "**Needs action**" header
+        # dropped a whole digest silently when the model omitted the header --
+        # which it does when there is nothing worth-knowing to separate from.
+        # Skip only when we positively know we are in the other bucket.
+        if m and bucket != "fyi":
             items.append({
                 "id": f"{m.group(1)}:{m.group(2)}",
                 "account": m.group(1),

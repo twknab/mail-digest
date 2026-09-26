@@ -94,6 +94,32 @@ check("state persists to disk",
 check("corrupt store does not crash", (tr.ITEMS_FILE.write_text("{ broken"), tr.load())[1],
       {"items": {}})
 
+print("a digest with no bucket headers -- the model omits them when there is nothing FYI")
+NO_HEADERS = """# Mail digest
+
+### work@example.com — business
+
+**Someone** (a@b.example)
+- **Subject:** Renewal needs information
+- draft: --account aliased --uid 7001
+
+### me@example.com — personal
+
+**Another** (c@d.example)
+- **Subject:** Account alert
+- draft: --account aliased --uid 7002
+
+ACTION_ITEMS: 2
+"""
+got = tr.parse_digest(NO_HEADERS)
+check("items are still captured", [i["uid"] for i in got], [7001, 7002])
+check("inbox still attributed", got[0]["inbox"], "work@example.com")
+check("worth-knowing is still excluded when the header IS present",
+      [i["uid"] for i in tr.parse_digest(
+          "### a@b.com — personal\n\n**Worth knowing**\n\n**X** (x@y.z)\n"
+          "- **Subject:** fyi\n- draft: --account a --uid 9\n")], [])
+
+
 print()
 print(f"{PASSED} passed, {FAILED} failed")
 raise SystemExit(1 if FAILED else 0)
