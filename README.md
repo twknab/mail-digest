@@ -29,7 +29,12 @@ accented, worth-knowing dimmed, every draft command a click-to-select chip.
 
 ![Digest](docs/screenshot-digest.png)
 
-**The menu bar** — a single dot, coloured by state:
+**The menu bar** — open items listed under the dot, each a click to mark done.
+They persist across runs, so something raised at 08:07 is still there at 13:07.
+
+![Menu bar](docs/screenshot-tray.png)
+
+The dot itself carries the state:
 
 | Dot | Means |
 | --- | --- |
@@ -37,9 +42,6 @@ accented, worth-knowing dimmed, every draft command a click-to-select chip.
 | orange ● + count | that many items need you |
 | blue ○ | a run is in flight; the dropdown shows the stage and a progress bar |
 | orange ● | the last digest reported no item count — open it and check |
-
-Open items are listed underneath it, and clicking one marks it done. They
-persist across runs, so an item raised at 08:07 is still there at 13:07.
 
 **About** — a native panel, showing the guarantees alongside live state:
 accounts configured, items open, last run.
