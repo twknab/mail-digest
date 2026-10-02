@@ -21,6 +21,10 @@ you until you close it.
 It can draft a reply into your Drafts folder, threaded correctly and **from the
 address the message was sent to**. It cannot send.
 
+## How it fits together
+
+![Architecture](docs/architecture.png)
+
 ## Screenshots
 
 **The digest** — grouped by the inbox each message arrived at, needs-action
