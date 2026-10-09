@@ -60,6 +60,7 @@ view by 13:07. So needs-action items go into a list that outlives the files:
 ```bash
 python3 triage.py --list           # what is still open
 python3 triage.py --done icloud:88827
+python3 triage.py --refresh        # re-read digests to fill gaps
 ```
 
 Items are keyed by the account and UID the draft handle already carries, stay

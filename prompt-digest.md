@@ -63,8 +63,10 @@ urgent its subject line pretends to be.
 Within a section, group by sender, or by topic when several senders are
 discussing one thing. Newest first. For each item:
 
-- **Who** it is from.
-- **Subject**, as written.
+- **Who** it is from, as the item's first line, bolded and nothing else on
+  it: `**Guardian Water & Power**`. Put the address in parentheses after it if
+  you have one. Do not put the subject on this line.
+- **Subject**, as written, on its own line: `- **Subject:** ...`
 - **What it says** — one or two sentences. The point, not a paraphrase of the
   subject line.
 - **The ask** — stated as a verb I can act on ("approve the Q3 budget",

@@ -120,6 +120,59 @@ check("worth-knowing is still excluded when the header IS present",
           "- **Subject:** fyi\n- draft: --account a --uid 9\n")], [])
 
 
+print("lead-line shapes the model actually produces")
+# Every one of these appeared in a real digest. The first three used to yield
+# an item with no sender and no subject, which surfaced as its own id.
+EMDASH = """### shop@example.com — shopping
+
+**Needs action**
+
+**Guardian Water & Power** — *Your Guardian Bill is Ready*
+- **What it says:** Your bill is $93.88, due 11/07.
+- draft: --account aliased --uid 89464
+"""
+got = tr.parse_digest(EMDASH)
+check("em dash + emphasis: sender", got[0]["who"], "Guardian Water & Power")
+check("em dash + emphasis: subject", got[0]["subject"], "Your Guardian Bill is Ready")
+
+PLAIN_DASH = "**Public Storage** — payment failure and AutoPay shut off\n- draft: --account aliased --uid 89322\n"
+got = tr.parse_digest(PLAIN_DASH)
+check("em dash, no emphasis: subject", got[0]["subject"],
+      "payment failure and AutoPay shut off")
+
+PARENS = "**Dana Ruiz** (dana@client.example)\n- **Subject:** Q3 SOW\n- draft: --account aliased --uid 1\n"
+got = tr.parse_digest(PARENS)
+check("parenthesised address still works", got[0]["who"], "Dana Ruiz (dana@client.example)")
+check("explicit Subject line still wins", got[0]["subject"], "Q3 SOW")
+
+BARE = "**Someone**\n- **Subject:** Explicit subject\n- draft: --account aliased --uid 2\n"
+check("bare name + explicit subject", tr.parse_digest(BARE)[0]["subject"], "Explicit subject")
+
+print("one item, several handles")
+# The model merges messages sent minutes apart. Both handles are the same
+# sender and subject; clearing them after the first left the second blank.
+TWO = """**Public Storage** — payment failure and AutoPay shut off
+  - draft: --account aliased --uid 89322
+  - draft: --account aliased --uid 89323
+"""
+got = tr.parse_digest(TWO)
+check("both handles captured", [i["uid"] for i in got], [89322, 89323])
+check("second keeps the sender", got[1]["who"], "Public Storage")
+check("second keeps the subject", got[1]["subject"],
+      "payment failure and AutoPay shut off")
+
+print("a new lead line resets the previous one")
+RESET = """**First** — subject one
+- draft: --account aliased --uid 11
+
+**Second** — subject two
+- draft: --account aliased --uid 22
+"""
+got = tr.parse_digest(RESET)
+check("two separate items", [i["subject"] for i in got], ["subject one", "subject two"])
+check("second does not inherit the first", got[1]["who"], "Second")
+
+
 print()
 print(f"{PASSED} passed, {FAILED} failed")
 raise SystemExit(1 if FAILED else 0)

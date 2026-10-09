@@ -71,18 +71,34 @@ def parse_digest(text: str) -> list[dict]:
             bucket = "act"; continue
         if re.fullmatch(r"\*\*Worth knowing\*\*", line):
             bucket = "fyi"; continue
-        m = re.fullmatch(r"\*\*([^*]+)\*\*(?:\s*\((.+)\))?", line)
+        # The lead line of an item. The model writes it several ways and all of
+        # them are reasonable readings of the prompt:
+        #   **Sender**
+        #   **Sender** (addr@example.com)
+        #   **Sender** — Subject text
+        #   **Sender** — *Subject text*
+        # Requiring the first two dropped the sender AND the subject for the
+        # rest, which is how items ended up labelled with their own id.
+        m = re.match(r"\*\*([^*]+)\*\*\s*(.*)$", line)
         if m:
             who = m.group(1).strip()
-            if m.group(2):
-                who = f"{who} ({m.group(2).strip()})"
+            rest = m.group(2).strip()
             subject = ""
+            if rest.startswith("(") and rest.endswith(")"):
+                who = f"{who} ({rest[1:-1].strip()})"
+            elif rest:
+                # "— Subject", "- Subject", "– Subject", optionally *emphasised*
+                rest = re.sub(r"^[\u2014\u2013-]+\s*", "", rest)
+                subject = rest.strip("*").strip()
             continue
         m = re.search(r"\*\*Subject:\*\*\s*(.+)", line)
         if m:
             subject = m.group(1).strip()
             continue
         m = re.search(r"draft:\s*--account\s+(\S+)\s+--uid\s+(\d+)", line)
+        # NOTE: who/subject are deliberately NOT cleared after a handle. One
+        # item can carry several, when the model merges messages sent minutes
+        # apart, and every one of them belongs to the same sender and subject.
         # The handle itself is the signal: the prompt only permits it on
         # needs-action items. Requiring an explicit "**Needs action**" header
         # dropped a whole digest silently when the model omitted the header --
@@ -98,7 +114,6 @@ def parse_digest(text: str) -> list[dict]:
                 "inbox": inbox,
                 "role": role,
             })
-            who = subject = ""
     return items
 
 
@@ -121,6 +136,37 @@ def ingest(path: Path) -> tuple[int, int]:
         added += 1
     save(data)
     return added, skipped
+
+
+def refresh(digests_dir: Path) -> tuple[int, int]:
+    """Re-read each item's source digest and fill in missing metadata.
+
+    ingest() deliberately skips ids it already knows, so a parser fix cannot
+    reach items captured before it. This repairs them in place without
+    touching state: an item you closed stays closed.
+    """
+    data = load()
+    store = data.get("items", {})
+    parsed: dict[str, dict] = {}
+    for f in sorted(digests_dir.glob("*.md")):
+        for item in parse_digest(f.read_text()):
+            parsed.setdefault(item["id"], item)
+
+    fixed = missing = 0
+    for key, item in store.items():
+        if item.get("subject") or item.get("who"):
+            continue
+        found = parsed.get(key)
+        if not found:
+            missing += 1
+            continue
+        item["subject"] = found.get("subject", "")
+        item["who"] = found.get("who", "")
+        if found.get("inbox"):
+            item["inbox"] = found["inbox"]
+        fixed += 1
+    save(data)
+    return fixed, missing
 
 
 def open_items(data: dict | None = None) -> list[dict]:
@@ -162,12 +208,18 @@ def main() -> int:
     p.add_argument("--tsv", action="store_true", help="id, inbox, subject -- for the menu bar")
     p.add_argument("--done", metavar="ID")
     p.add_argument("--reopen", metavar="ID")
+    p.add_argument("--refresh", action="store_true",
+                   help="re-read source digests to fill in missing subjects")
     p.add_argument("--all", action="store_true", help="with --list, include closed items")
     args = p.parse_args()
 
     if args.ingest:
         added, skipped = ingest(args.ingest)
         print(f"{added} new, {skipped} already tracked.")
+        return 0
+    if args.refresh:
+        fixed, missing = refresh(Path(__file__).resolve().parent / "digests")
+        print(f"{fixed} repaired, {missing} with no source digest left.")
         return 0
     if args.done:
         print(close(args.done)); return 0
@@ -177,7 +229,8 @@ def main() -> int:
         print(json.dumps(open_items(), indent=2)); return 0
     if args.tsv:
         for i in open_items():
-            label = (i.get("subject") or i.get("who") or i["id"]).replace("\t", " ")
+            label = (i.get("subject") or i.get("who")
+                     or f"(no subject — uid {i['uid']})").replace("\t", " ")
             print("\t".join([i["id"], i.get("inbox", ""), label]))
         return 0
 
@@ -188,7 +241,8 @@ def main() -> int:
         return 0
     for i in rows:
         mark = "·" if i.get("state") == "open" else "✓"
-        print(f"  {mark} {i['id']:<22} {i.get('inbox',''):<28} {(i.get('subject') or i.get('who') or '')[:52]}")
+        label = i.get("subject") or i.get("who") or f"(no subject — uid {i['uid']})"
+        print(f"  {mark} {i['id']:<22} {i.get('inbox',''):<28} {label[:52]}")
     print(f"\n{len(open_items(data))} open.")
     return 0
 
