@@ -25,6 +25,11 @@ CLAUDE="$(command -v claude || true)"
 [ -n "$CLAUDE" ] || { echo "claude not on PATH"; exit 127; }
 
 mkdir -p "$STATE" "$DIR/digests"
+
+# The batch file holds whole message bodies while a batch is being triaged.
+# Leaving it behind means the most recent 25 messages sit in plaintext on disk
+# indefinitely, for no benefit once the sweep is done.
+trap 'rm -f "$BATCHFILE"' EXIT
 OUTFILE="$DIR/digests/sweep-$(date +%Y-%m-%d-%H%M).md"
 
 advance_cursor() {

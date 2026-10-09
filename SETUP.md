@@ -271,6 +271,7 @@ confirms your address is live, so we filter instead.
 | `providers.json` | Provider presets. Add one here, not in code. |
 | `mail_digest.py` | The reader. Read-only, all accounts, JSON out. |
 | `check_readonly.py` | Proves a run changes no unread count. |
+| `privacy.sh` | Reports and purges mail content stored on disk. |
 | `triage.py` | Open action items that outlive individual digests. |
 | `sweep.sh` | Walks the backlog the forward baseline skipped. |
 | `mail_reply.py` | Drafts a reply into Drafts. Dry run unless `--append`. Cannot send. |

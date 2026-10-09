@@ -40,6 +40,11 @@ They persist across runs, so something raised at 08:07 is still there at 13:07.
 
 The dot itself carries the state:
 
+Open items are coloured by urgency — soft terracotta, amber, grey — and the dot
+takes the colour of the worst one waiting, so the menu bar says how bad rather
+than only how many. The model judges urgency from consequence and deadline, not
+tone; anything left for ten days is raised a step, so nothing quietly rots.
+
 | Dot | Means |
 | --- | --- |
 | green ● | all caught up |
@@ -82,6 +87,41 @@ batches, newest first, and feeds anything actionable into the same list:
 It never moves the forward baseline, and it only advances its own cursor past
 messages that were genuinely triaged — a batch that failed is retried rather
 than skipped.
+
+## Privacy — what leaves your machine
+
+Worth being exact about, because an LLM that triages mail has to read it.
+
+**Mail content is sent to Anthropic.** Each run has Claude call
+`mail_digest.py`, and that tool's output — sender, address, subject, and up to
+**700 characters of body** per message — comes back as tool output, which means
+it is part of the conversation sent to the API. There is no way around this
+while a model does the triage. Retention is governed by your own Anthropic
+account terms and settings, not by this tool; check those if it matters to you.
+
+**Nothing else leaves.** No analytics, no telemetry, no third-party services.
+IMAP talks directly to your provider; the menu bar, viewer and About panel read
+local files only.
+
+**Passwords never reach the model.** They live in the Keychain and are read by
+`mail_digest.py` at connection time. They are not in `accounts.json`, not in
+any digest, and not in the prompt.
+
+**What is stored locally, in plaintext:**
+
+```bash
+./privacy.sh                       # what exists, where, how old
+./privacy.sh --purge-older-than 30
+./privacy.sh --purge-all
+```
+
+Digests are summaries of real mail and accumulate indefinitely until you remove
+them. They are gitignored, so they never reach the repository — but they are
+not encrypted, and anything with access to your home directory can read them.
+
+**If this is more exposure than you want:** lower `SNIPPET_CHARS` in
+`mail_digest.py` to send less body text, or set it to 0 to send subjects and
+senders only. The digest gets blunter; the triage still works.
 
 ## The three guarantees
 

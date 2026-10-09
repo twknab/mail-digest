@@ -34,6 +34,11 @@ GREEN="#4a9d6e"
 ORANGE="#e09055"
 GREY="#8a8782"
 BLUE="#4a90d9"
+# Soft, not alarming: this menu is opened many times a day, and a wall of red
+# stops meaning anything. The step between them is enough to scan.
+U_HIGH="#d9826f"
+U_MED="#c9975f"
+U_LOW="#8f9295"
 
 menu_actions() {
   echo "---"
@@ -132,7 +137,15 @@ elif [ -z "$count" ]; then
   echo "Last digest reported no item count | color=$ORANGE"
   echo "Open it and check | color=$GREY size=12"
 elif [ "$open_n" -gt 0 ]; then
-  echo "● $open_n | color=$ORANGE size=11"
+  # The dot takes the colour of the worst thing waiting, so the menu bar says
+  # how bad rather than only how many. open_items() sorts most urgent first.
+  top="$(printf '%s\n' "$open_tsv" | head -1 | cut -f4)"
+  case "$top" in
+    high) dot="$U_HIGH" ;;
+    low)  dot="$U_LOW" ;;
+    *)    dot="$U_MED" ;;
+  esac
+  echo "● $open_n | color=$dot size=11"
   echo "---"
   echo "$open_n open · last run $when | color=$GREY"
 else
@@ -144,11 +157,16 @@ fi
 if [ "$open_n" -gt 0 ]; then
   echo "---"
   echo "Click an item to mark it done | color=$GREY size=11"
-  printf '%s\n' "$open_tsv" | while IFS="$(printf '\t')" read -r id inbox subject; do
+  printf '%s\n' "$open_tsv" | while IFS="$(printf '\t')" read -r id inbox subject urg; do
     [ -n "$id" ] || continue
     short="$subject"
     [ ${#short} -gt 54 ] && short="$(printf '%.51s...' "$short")"
-    echo "• $short | shell=/bin/sh param1=-c param2=\"$PY3 $DIR/triage.py --done $id\" terminal=false refresh=true"
+    case "$urg" in
+      high) c="$U_HIGH" ;;
+      low)  c="$U_LOW" ;;
+      *)    c="$U_MED" ;;
+    esac
+    echo "• $short | color=$c shell=/bin/sh param1=-c param2=\"$PY3 $DIR/triage.py --done $id\" terminal=false refresh=true"
     echo "   $inbox | color=$GREY size=11"
   done
 fi

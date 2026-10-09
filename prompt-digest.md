@@ -71,6 +71,17 @@ discussing one thing. Newest first. For each item:
   subject line.
 - **The ask** — stated as a verb I can act on ("approve the Q3 budget",
   "confirm Thursday 2pm"). If there is no ask, say "FYI" and move on.
+- **Urgency** — for **Needs action** items only, on its own line immediately
+  before the draft handle: `urgency: high`, `urgency: medium` or
+  `urgency: low`. Judge it on consequence and deadline, not on tone — a
+  subject line shouting URGENT is not evidence, and a quiet notice about a
+  failed payment usually is.
+  - **high** — money is already failing, a deadline falls within about a
+    week, access or security is at risk, or someone is actively blocked
+    waiting on me.
+  - **medium** — a real request with no near deadline, or something that
+    will become high if left for a few weeks.
+  - **low** — worth doing, costs nothing to leave for now.
 - **Draft handle** — for **Needs action** items only, end the item with a line
   exactly like `draft: --account work --uid 4821`, using the `name` of the
   account it came from and the message's `uid`. That is what I paste into

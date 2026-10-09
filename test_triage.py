@@ -3,6 +3,7 @@
 
 import json
 import tempfile
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import triage as tr
@@ -171,6 +172,54 @@ RESET = """**First** — subject one
 got = tr.parse_digest(RESET)
 check("two separate items", [i["subject"] for i in got], ["subject one", "subject two"])
 check("second does not inherit the first", got[1]["who"], "Second")
+
+
+print("urgency")
+URG = """### work@example.com — business
+
+**Needs action**
+
+**Billing** — Payment failed
+- **The ask:** Pay again.
+- urgency: high
+- draft: --account aliased --uid 501
+
+**Someone** — A question
+- urgency: low
+- draft: --account aliased --uid 502
+
+**Unlabelled** — No urgency line
+- draft: --account aliased --uid 503
+"""
+got = {i["uid"]: i for i in tr.parse_digest(URG)}
+check("high parsed", got[501]["urgency"], "high")
+check("low parsed", got[502]["urgency"], "low")
+check("absent defaults to medium, not high", got[503]["urgency"], "medium")
+check("urgency does not leak into the next item", got[503].get("subject"), "No urgency line")
+check("urgency line is not mistaken for a subject", got[501]["subject"], "Payment failed")
+
+print("age escalates, so nothing quietly rots")
+def aged(urg, days):
+    return {"urgency": urg,
+            "first_seen": (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()}
+check("fresh low stays low", tr.effective_urgency(aged("low", 1)), "low")
+check("fresh medium stays medium", tr.effective_urgency(aged("medium", 1)), "medium")
+check("old low becomes medium", tr.effective_urgency(aged("low", 11)), "medium")
+check("old medium becomes high", tr.effective_urgency(aged("medium", 11)), "high")
+check("high cannot exceed high", tr.effective_urgency(aged("high", 99)), "high")
+check("unparseable date does not crash",
+      tr.effective_urgency({"urgency": "low", "first_seen": "not-a-date"}), "low")
+check("junk urgency falls back to medium",
+      tr.effective_urgency({"urgency": "URGENT!!", "first_seen": None}), "medium")
+
+print("ordering puts the worst first")
+tr.ITEMS_FILE.write_text(json.dumps({"items": {
+    "a:1": {"id": "a:1", "uid": 1, "state": "open", "urgency": "low",
+            "first_seen": "2026-01-01T00:00:00+00:00", "subject": "old but low"},
+    "a:2": {"id": "a:2", "uid": 2, "state": "open", "urgency": "high",
+            "first_seen": "2026-12-01T00:00:00+00:00", "subject": "new and high"},
+}}) + "\n")
+check("high outranks older low", [i["id"] for i in tr.open_items()], ["a:2", "a:1"])
 
 
 print()

@@ -57,6 +57,7 @@ def parse_digest(text: str) -> list[dict]:
     inbox = role = ""
     bucket = ""
     who = subject = ""
+    urgency = ""
 
     for raw in text.splitlines():
         line = raw.strip()
@@ -84,6 +85,7 @@ def parse_digest(text: str) -> list[dict]:
             who = m.group(1).strip()
             rest = m.group(2).strip()
             subject = ""
+            urgency = ""
             if rest.startswith("(") and rest.endswith(")"):
                 who = f"{who} ({rest[1:-1].strip()})"
             elif rest:
@@ -94,6 +96,10 @@ def parse_digest(text: str) -> list[dict]:
         m = re.search(r"\*\*Subject:\*\*\s*(.+)", line)
         if m:
             subject = m.group(1).strip()
+            continue
+        m = re.match(r"-?\s*urgency:\s*(high|medium|low)\b", line, re.I)
+        if m:
+            urgency = m.group(1).lower()
             continue
         m = re.search(r"draft:\s*--account\s+(\S+)\s+--uid\s+(\d+)", line)
         # NOTE: who/subject are deliberately NOT cleared after a handle. One
@@ -113,6 +119,7 @@ def parse_digest(text: str) -> list[dict]:
                 "who": who,
                 "inbox": inbox,
                 "role": role,
+                "urgency": urgency or "medium",
             })
     return items
 
@@ -169,11 +176,38 @@ def refresh(digests_dir: Path) -> tuple[int, int]:
     return fixed, missing
 
 
+RANK = {"high": 0, "medium": 1, "low": 2}
+ESCALATE_AFTER_DAYS = 10
+
+
+def effective_urgency(item: dict) -> str:
+    """The model's judgement, raised a step once an item has sat long enough.
+
+    Something low that has been open a fortnight is no longer low: either it
+    matters and is being avoided, or it should be closed. Either way it should
+    stop looking the same as what arrived this morning.
+    """
+    u = (item.get("urgency") or "medium").lower()
+    if u not in RANK:
+        u = "medium"
+    seen = item.get("first_seen")
+    if not seen:
+        return u
+    try:
+        age = (datetime.now(timezone.utc) - datetime.fromisoformat(seen)).days
+    except ValueError:
+        return u
+    if age >= ESCALATE_AFTER_DAYS and u != "high":
+        return "high" if u == "medium" else "medium"
+    return u
+
+
 def open_items(data: dict | None = None) -> list[dict]:
     data = data or load()
     items = [i for i in data.get("items", {}).values() if i.get("state") == "open"]
-    # Oldest first: something raised three days ago matters more than this run's.
-    return sorted(items, key=lambda i: i.get("first_seen") or "")
+    # Most urgent first, then oldest: something raised three days ago matters
+    # more than this run's, but a failing payment outranks both.
+    return sorted(items, key=lambda i: (RANK[effective_urgency(i)], i.get("first_seen") or ""))
 
 
 def close(item_id: str) -> str:
@@ -231,7 +265,7 @@ def main() -> int:
         for i in open_items():
             label = (i.get("subject") or i.get("who")
                      or f"(no subject — uid {i['uid']})").replace("\t", " ")
-            print("\t".join([i["id"], i.get("inbox", ""), label]))
+            print("\t".join([i["id"], i.get("inbox", ""), label, effective_urgency(i)]))
         return 0
 
     data = load()
@@ -240,7 +274,8 @@ def main() -> int:
         print("Nothing open.")
         return 0
     for i in rows:
-        mark = "·" if i.get("state") == "open" else "✓"
+        mark = {"high": "!", "medium": "·", "low": " "}.get(effective_urgency(i), "·") \
+            if i.get("state") == "open" else "✓"
         label = i.get("subject") or i.get("who") or f"(no subject — uid {i['uid']})"
         print(f"  {mark} {i['id']:<22} {i.get('inbox',''):<28} {label[:52]}")
     print(f"\n{len(open_items(data))} open.")
