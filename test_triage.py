@@ -222,6 +222,69 @@ tr.ITEMS_FILE.write_text(json.dumps({"items": {
 check("high outranks older low", [i["id"] for i in tr.open_items()], ["a:2", "a:1"])
 
 
+print("clearing the count")
+tr.ITEMS_FILE.write_text(json.dumps({"items": {
+    "a:1": {"id": "a:1", "uid": 1, "state": "open", "urgency": "high",
+            "first_seen": "2026-01-01T00:00:00+00:00", "subject": "urgent one"},
+    "a:2": {"id": "a:2", "uid": 2, "state": "open", "urgency": "low",
+            "first_seen": "2026-01-02T00:00:00+00:00", "subject": "quiet one"},
+    "a:3": {"id": "a:3", "uid": 3, "state": "done", "urgency": "low",
+            "first_seen": "2026-01-03T00:00:00+00:00", "closed_at": "2026-01-04T00:00:00+00:00",
+            "subject": "actually finished"},
+}}) + "\n")
+
+cleared, stamp = tr.clear()
+check("every open item is cleared", cleared, 2)
+check("nothing is left open", tr.open_items(), [])
+
+store = tr.load()["items"]
+check("cleared is its own state, not done", store["a:1"]["state"], "cleared")
+check("an item that was really done keeps that record",
+      store["a:3"]["state"], "done")
+check("the done item is not restamped", store["a:3"]["closed_at"],
+      "2026-01-04T00:00:00+00:00")
+check("the batch is stamped for undo", store["a:1"]["cleared_batch"], stamp)
+check("one stamp for the whole batch",
+      store["a:1"]["cleared_batch"] == store["a:2"]["cleared_batch"], True)
+
+print("undo restores only that batch")
+msg = tr.unclear()
+check("reports what it reopened", msg, f"Reopened 2 item(s) from the reset of {stamp}.")
+check("both are open again", len(tr.open_items()), 2)
+check("the genuinely done item was not resurrected",
+      tr.load()["items"]["a:3"]["state"], "done")
+check("the batch marker is gone", "cleared_batch" in tr.load()["items"]["a:1"], False)
+check("undoing twice is refused, not silent", tr.unclear(), "No reset to undo.")
+
+print("an unrelated batch is untouched")
+tr.clear()
+first = tr.load()["items"]["a:1"]["cleared_batch"]
+tr.ITEMS_FILE.write_text(json.dumps({**tr.load(), "items": {
+    **tr.load()["items"],
+    "a:4": {"id": "a:4", "uid": 4, "state": "open", "urgency": "low",
+            "first_seen": "2026-02-01T00:00:00+00:00", "subject": "later arrival"},
+}}) + "\n")
+second = tr.clear()[1]
+tr.unclear(second)
+check("only the named batch reopens", tr.load()["items"]["a:4"]["state"], "open")
+check("the earlier batch stays cleared", tr.load()["items"]["a:1"]["state"], "cleared")
+
+check("batch ids are finer than one second",
+      tr.batch_id() != tr.batch_id(), True)
+tr.ITEMS_FILE.write_text(json.dumps({"items": {
+    "b:1": {"id": "b:1", "uid": 1, "state": "open", "urgency": "low",
+            "first_seen": "2026-01-01T00:00:00+00:00", "subject": "one"},
+}}) + "\n")
+b1 = tr.clear()[1]
+tr.ITEMS_FILE.write_text(json.dumps({"items": {
+    **tr.load()["items"],
+    "b:2": {"id": "b:2", "uid": 2, "state": "open", "urgency": "low",
+            "first_seen": "2026-01-02T00:00:00+00:00", "subject": "two"},
+}}) + "\n")
+b2 = tr.clear()[1]
+check("back-to-back resets do not collide", b1 != b2, True)
+
+
 print()
 print(f"{PASSED} passed, {FAILED} failed")
 raise SystemExit(1 if FAILED else 0)

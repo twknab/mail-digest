@@ -32,6 +32,16 @@ def now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
+def batch_id() -> str:
+    """A unique id for one reset.
+
+    now() truncates to the second, which is right for a readable timestamp and
+    wrong for an identity: two resets in the same second would share an id, and
+    undoing one would silently restore the other.
+    """
+    return datetime.now(timezone.utc).isoformat(timespec="microseconds")
+
+
 def load() -> dict:
     if ITEMS_FILE.exists():
         try:
@@ -223,6 +233,48 @@ def close(item_id: str) -> str:
     return f"Closed {item_id} — {item.get('subject') or item.get('who') or ''}".strip()
 
 
+def clear() -> tuple[int, str]:
+    """Declare bankruptcy: close what is open and start the count from now.
+
+    Cleared is its own state, not "done". Saying 38 things were done when they
+    were abandoned would make the record a lie, and the point of keeping a
+    record is that it can be trusted. --list --all shows them distinctly, and
+    the batch is stamped so one reset can be undone without touching items
+    closed before it.
+    """
+    data = load()
+    stamp, batch = now(), batch_id()
+    cleared = 0
+    for item in data.get("items", {}).values():
+        if item.get("state") != "open":
+            continue
+        item["state"] = "cleared"
+        item["closed_at"] = stamp
+        item["cleared_batch"] = batch
+        cleared += 1
+    save(data)
+    return cleared, batch
+
+
+def unclear(batch: str | None = None) -> str:
+    """Undo a reset. Only touches items cleared in that batch."""
+    data = load()
+    items = data.get("items", {})
+    batches = sorted({i.get("cleared_batch") for i in items.values() if i.get("cleared_batch")})
+    if not batches:
+        return "No reset to undo."
+    target = batch or batches[-1]
+    n = 0
+    for item in items.values():
+        if item.get("cleared_batch") == target:
+            item["state"] = "open"
+            item["closed_at"] = None
+            item.pop("cleared_batch", None)
+            n += 1
+    save(data)
+    return f"Reopened {n} item(s) from the reset of {target}."
+
+
 def reopen(item_id: str) -> str:
     data = load()
     item = data.get("items", {}).get(item_id)
@@ -245,6 +297,11 @@ def main() -> int:
     p.add_argument("--refresh", action="store_true",
                    help="re-read source digests to fill in missing subjects")
     p.add_argument("--all", action="store_true", help="with --list, include closed items")
+    p.add_argument("--clear", action="store_true",
+                   help="start the count from now: close what is open as 'cleared'")
+    p.add_argument("--undo-clear", nargs="?", const=True, metavar="STAMP",
+                   help="reopen the items closed by the last reset")
+    p.add_argument("--yes", action="store_true", help="skip the confirmation prompt")
     args = p.parse_args()
 
     if args.ingest:
@@ -255,6 +312,27 @@ def main() -> int:
         fixed, missing = refresh(Path(__file__).resolve().parent / "digests")
         print(f"{fixed} repaired, {missing} with no source digest left.")
         return 0
+    if args.clear:
+        pending = open_items()
+        if not pending:
+            print("Nothing open; the count is already zero.")
+            return 0
+        if not args.yes:
+            # A reset is cheap to undo but easy to fire by accident, and 38
+            # items is a lot to lose sight of silently.
+            urgent = sum(1 for i in pending if effective_urgency(i) == "high")
+            print(f"{len(pending)} open item(s) will be marked cleared"
+                  + (f", {urgent} of them urgent" if urgent else "") + ".")
+            print("They stay in the record and can be restored with --undo-clear.")
+            if input("Proceed? [y/N] ").strip().lower() not in ("y", "yes"):
+                print("Cancelled.")
+                return 0
+        cleared, stamp = clear()
+        print(f"Cleared {cleared}. The count starts from now.")
+        print(f"Undo with:\n  python3 triage.py --undo-clear {stamp}")
+        return 0
+    if args.undo_clear:
+        print(unclear(None if args.undo_clear is True else args.undo_clear)); return 0
     if args.done:
         print(close(args.done)); return 0
     if args.reopen:
@@ -274,8 +352,11 @@ def main() -> int:
         print("Nothing open.")
         return 0
     for i in rows:
-        mark = {"high": "!", "medium": "·", "low": " "}.get(effective_urgency(i), "·") \
-            if i.get("state") == "open" else "✓"
+        state = i.get("state")
+        # "~" not "✓": cleared means abandoned, and the list should not imply
+        # otherwise when you look back at it.
+        mark = ({"high": "!", "medium": "·", "low": " "}.get(effective_urgency(i), "·")
+                if state == "open" else "~" if state == "cleared" else "✓")
         label = i.get("subject") or i.get("who") or f"(no subject — uid {i['uid']})"
         print(f"  {mark} {i['id']:<22} {i.get('inbox',''):<28} {label[:52]}")
     print(f"\n{len(open_items(data))} open.")

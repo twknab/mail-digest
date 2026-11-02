@@ -66,10 +66,19 @@ view by 13:07. So needs-action items go into a list that outlives the files:
 python3 triage.py --list           # what is still open
 python3 triage.py --done icloud:88827
 python3 triage.py --refresh        # re-read digests to fill gaps
+python3 triage.py --clear          # behind? start the count from now
+python3 triage.py --undo-clear     # ...and put it back
 ```
 
 Items are keyed by the account and UID the draft handle already carries, stay
-open until you close them, and closing is per item rather than per run. The
+open until you close them, and closing is per item rather than per run.
+
+If you fall far enough behind that the list stops being useful, **Start fresh**
+in the menu bar (or `--clear`) marks everything open as `cleared` and restarts
+the count. That is its own state, not `done` — claiming you finished thirty
+things you abandoned would make the record worthless, and the record is the
+point. Nothing is deleted, and one reset can be undone without disturbing items
+you genuinely closed before it. The
 menu bar count is the number *open*, not the number in the newest digest.
 
 ## The backlog

@@ -48,6 +48,9 @@ menu_actions() {
   [ -n "$latest_html" ] && echo "View latest digest | href=file://$latest_html"
   [ -f "$VIEW/index.html" ] && echo "All digests | href=file://$VIEW/index.html"
   echo "Run now | shell=/bin/sh param1=-c param2=\"/bin/launchctl kickstart -k gui/$(id -u)/local.mail-digest\" terminal=false refresh=true"
+  # Confirms in a real dialog first -- clearing dozens of items on a stray
+  # click would be a poor trade for one less menu level.
+  echo "Start fresh… | shell=$DIR/reset.sh terminal=false refresh=true"
   echo "---"
   # The About content lives here as a submenu rather than only behind a click,
   # so the entry is never an empty menu.
